@@ -1,0 +1,132 @@
+#+++++++++++CÓDIGO PRINCIPAL+++++++++++++++
+
+import pandas as pd
+from sklearn import tree, svm
+from sklearn.metrics import accuracy_score
+from sklearn.model_selection import train_test_split
+import matplotlib.pyplot as plt
+
+# Leitura e preparação dos dados
+df = pd.read_csv('empenhos1.csv')
+
+# Limpeza da coluna valor
+df['valor'] = df['valor'].apply(lambda x: x.replace('.', '').replace('R$', '').replace(',', '.'))
+df['valor'] = df['valor'].astype(float)
+
+# Remover coluna 'data'
+del df['data']
+
+# Correções e padronizações da coluna 'objeto'
+df['objeto'] = df['objeto'].apply(lambda x: 'AQUISIÇÃO' if x in ['QUISIÇÃO DE MATERIAL QUÍMICO,', 'AQU ISIÇÃO DE SEMENTES,\r\nMUDAS DE PLANTAS, INSUMOS E ALIMENTOS PARA ANIMAIS.', 'AQUISIÇÃO'] else x)
+df['objeto'] = df['objeto'].apply(lambda x: 'SERVIÇOS' if x in ['PRESTAÇÃO DE SERVIÇO DE DECORAÇÃO DE EVENTOS.', 'SERVIÇO REPROGRÁFICOS', 'SERVIÇOS'] else x)
+df['objeto'] = df['objeto'].apply(lambda x: 'CURSO' if 'CURSO' in x.upper() else x)
+df['objeto'] = df['objeto'].apply(lambda x: 'CONTRATAÇÃO' if 'CONTRATAÇÃO' in x else x)
+df['objeto'] = df['objeto'].apply(lambda x: 'FORNECIMENTO' if 'FORNECIMENTO' in x else x)
+df['objeto'] = df['objeto'].apply(lambda x: 'AQUISIÇÃO' if 'AQUISIÇÃO' in x else x)
+df['objeto'] = df['objeto'].apply(lambda x: 'SERVIÇOS' if 'SERVIÇOS' in x else x)
+df['objeto'] = df['objeto'].apply(lambda x: 'EQUIPAMENTOS' if 'EQUIPAMENTOS' in x or 'AQUIPAMENTOS' in x else x)
+df['objeto'] = df['objeto'].apply(lambda x: 'REFORMA' if 'REFORMA' in x else x)
+df['objeto'] = df['objeto'].apply(lambda x: 'IMPLANTAÇÃO' if 'IMPLANTAÇÃO' in x else x)
+df['objeto'] = df['objeto'].apply(lambda x: 'RETOMADA' if 'RETOMADA' in x else x)
+df['objeto'] = df['objeto'].apply(lambda x: 'LOCAÇÃO' if 'LOCAÇÃO' in x else x)
+df['objeto'] = df['objeto'].apply(lambda x: 'IMPORTAÇÃO' if 'IMPORTAÇÃO' in x else x)
+df['objeto'] = df['objeto'].apply(lambda x: 'MANUTENÇÃO' if 'MANUTENÇÃO' in x else x)
+df['objeto'] = df['objeto'].apply(lambda x: 'PROGRAMA' if 'PROGRAMA' in x else x)
+df['objeto'] = df['objeto'].apply(lambda x: 'CONFECÇÃO' if 'CONFECÇÃO' in x else x)
+df['objeto'] = df['objeto'].apply(lambda x: 'PROJETO' if 'PROJETO' in x else x)
+df['objeto'] = df['objeto'].apply(lambda x: 'CONSTRUÇÃO' if 'CONSTRUÇÃO' in x else x)
+df['objeto'] = df['objeto'].apply(lambda x: 'EMISSÃO DE CERTIFICADO' if 'EMISSÃO DE CERTIFICADO' in x else x)
+
+# Separar entradas e saídas
+X = df.drop('objeto', axis=1)
+y = df['objeto']
+
+# Dividir dados em treino e teste
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=1)
+
+# Treinar modelos
+clf_arvore = tree.DecisionTreeClassifier()
+clf_arvore.fit(X_train, y_train)
+
+clf_svm = svm.SVC()
+clf_svm.fit(X_train, y_train)
+
+# ==========================
+# Menu
+# ==========================
+def mostrar_desempenho(modelo, nome):
+    y_pred = modelo.predict(X_test)
+    acuracia = accuracy_score(y_test, y_pred)
+    print(f"Acurácia do {nome}: {acuracia:.2f}")
+
+def mostrar_arvore(clf):
+    plt.figure(figsize=(20, 10))
+    tree.plot_tree(clf, feature_names=X.columns, class_names=sorted(y.unique()), filled=True, fontsize=10)
+    plt.show()
+
+def nova_classificacao(modelo):
+    try:
+        ano = int(input("Digite o ano: "))
+        numero_empenho = int(input("Digite o número do empenho: "))
+        valor = float(input("Digite o valor (ex: 1234.56): "))
+        id_contrato = int(input("Digite o id_contrato (um número inteiro): "))
+        entrada = pd.DataFrame([[ano, numero_empenho, valor, id_contrato]], columns=X.columns)
+        resultado = modelo.predict(entrada)
+        print(f"Classificação: {resultado[0]}")
+    except Exception as e:
+        print(f"Erro na entrada: {e}")
+
+# ==========================
+# Menu principal
+# ==========================
+while True:
+    print("\nClassificador de Empenhos")
+    print("1 - Árvore de Decisão")
+    print("2 - SVM")
+    print("3 - Terminar programa")
+    opcao = input("Digite uma opção: ")
+
+    if opcao == '1':
+        while True:
+            print("\nÁrvore de Decisão")
+            print("1 - Mostrar desempenho")
+            print("2 - Mostrar árvore")
+            print("3 - Fazer nova classificação")
+            print("4 - Voltar")
+            opcao_arv = input("Digite uma opção: ")
+            if opcao_arv == '1':
+                mostrar_desempenho(clf_arvore, "Árvore de Decisão")
+            elif opcao_arv == '2':
+                print("Exibindo a árvore de decisão...")
+                plt.figure(figsize=(20, 10))
+                tree.plot_tree(clf_arvore, feature_names=X.columns, class_names=clf_arvore.classes_, filled=True, rounded=True)
+                plt.title("Árvore de Decisão")
+                plt.show()
+            elif opcao_arv == '3':
+                nova_classificacao(clf_arvore)
+            elif opcao_arv == '4':
+                break
+            else:
+                print("Opção inválida.")
+
+    elif opcao == '2':
+        while True:
+            print("\nSVM")
+            print("1 - Mostrar desempenho")
+            print("2 - Fazer nova classificação")
+            print("3 - Voltar")
+            opcao_svm = input("Digite uma opção: ")
+            if opcao_svm == '1':
+                mostrar_desempenho(clf_svm, "SVM")
+            elif opcao_svm == '2':
+                nova_classificacao(clf_svm)
+            elif opcao_svm == '3':
+                break
+            else:
+                print("Opção inválida.")
+
+    elif opcao == '3':
+        print("Programa encerrado.")
+        break
+    else:
+        print("Opção inválida.")
